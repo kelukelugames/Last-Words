@@ -28,7 +28,7 @@ _MOD_NAME = "dang"
   # Increasing the number of threads beyond 8 on my machine causes Http errors.
 _MAX_NUM_THREADS = 8
 
-DEBUG = True
+DEBUG = False
 
 def __get_user(id):
   return json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/user/"
@@ -129,7 +129,7 @@ def run_job():
   mod_data = __get_user(_MOD_NAME)
   submit_ids = mod_data["submitted"]
   # Uncomment for test data.
-  submit_ids = [10551997, 7867166, 12041458, 12059888, 11631519]
+  #submit_ids = [10551997, 7867166, 12041458, 12059888, 11631519]
 
   pool = Pool(_MAX_NUM_THREADS)
   results = pool.map(__process_item, submit_ids)
