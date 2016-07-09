@@ -104,7 +104,7 @@ def run_job():
   submit_ids = mod_data["submitted"]
 
   # Uncomment for test data
-  submit_ids = [10551997, 7867166, 12041458, 12059888, 11631519]
+  #submit_ids = [10551997, 7867166, 12041458, 12059888, 11631519]
 
   pool = Pool(8)
   results = pool.map(__process_item, submit_ids)
