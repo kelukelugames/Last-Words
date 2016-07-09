@@ -1,5 +1,5 @@
-Parent was replying to a comment by a now-banned account, not to the article.
-  --austinz
+*"Parent was replying to a comment by a now-banned account, not to the article."*
+  [--austinz](https://news.ycombinator.com/user?id=austinz)
 
 To the 66% of you who are obese or overweight: put down the fork. It can be done.
   --Girlang
