@@ -15,68 +15,69 @@ import codecs
 Global variables
 """
 
-decoder = codecs.getreader("utf-8")
+_DECODER = codecs.getreader("utf-8")
 # To prevent SSL failure after too many calls.
-context = ssl._create_unverified_context()
-lock = threading.Lock()
-modFile = open("modComments.txt", "w")
-modData = json.load(decoder(urlopen("https://hacker-news.firebaseio.com/v0/user/dang.json", context=context)))
+_CONTEXT = ssl._create_unverified_context()
+_LOCK = threading.Lock()
+
+modData = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/user/dang.json", context=_CONTEXT)))
 submitIds = modData["submitted"]
 
+# Uncomment for test data
 submitIds = [10551997, 7867166, 12041458, 12059888]
+DEBUG = True
 
-print(len(submitIds))
-
-for id in submitIds:
-  if type(id) != type(3):
-    print(type(id))
-
-def isBanningComment(data, id):
-  print(id)
+def isComment(data):
   return data is not None \
     and "type" in data \
     and data["type"] == "comment" \
-    and "text" in data \
+    and "text" in data
+
+def isPossibleBan(data):
+  return isComment(data) \
     and "banned" in data["text"] \
     and "parent" in data
 
-def foo(id):
+def isUserBanned(parentComment, modComment):
+  return True
+
+def processItem(id):
+  if DEBUG:
+    print(id)
+
   modComment = ""
   try:
-    modComment = json.load(decoder(urlopen("https://hacker-news.firebaseio.com/v0/item/"
+    modComment = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/item/"
       + str(id)
       + ".json",
-      context=context)))
+      context=_CONTEXT)))
   except http.client.BadStatusLine:
     print("***********************************************")
     print("failed: " + str(id))
     print("***********************************************")
     return 0
 
-  if isBanningComment(modComment, id):
+  if isPossibleBan(modComment):
+    parentComment = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/item/"
+      + str(modComment["parent"])
+      + ".json",
+      context=_CONTEXT)))
 
-    lock.acquire()
-    #next check if user is banned
-    print("id: " + str(modComment['id']))
-
-    modCommentText = modComment["text"]
-    #modCommentText = modCommentText.encode('utf-8')
-
-    #print("banned text: " + modCommentText)
-    modFile.write(modCommentText)
-    modFile.write("\n\n")
-    lock.release()
+    if isUserBanned(parentComment, modComment):
+      _LOCK.acquire()
+      with open("README.md", 'a') as out:
+        out.write(parentComment["text"] + '\n\n')
+      _LOCK.release()
     return 1
-  else:
-    return 0
+  return 0
 
-pool = Pool(8)
-results = pool.map(foo, submitIds)
+def run_job():
+  pool = Pool(8)
+  results = pool.map(processItem, submitIds)
 
-pool.close()
-pool.join()
+  pool.close()
+  pool.join()
 
-modFile.close()
-print("Finished")
-print(sum(results))
+  print("Finished")
+  print("Total banned users detected: " + str(sum(results)))
 
