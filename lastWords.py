@@ -19,35 +19,35 @@ _DECODER = codecs.getreader("utf-8")
 # To prevent SSL failure after too many calls.
 _CONTEXT = ssl._create_unverified_context()
 _LOCK = threading.Lock()
+_LAST_SUBMITTED_THRESHOLD_SECONDS = 1000
 
-modData = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/user/dang.json", context=_CONTEXT)))
-submitIds = modData["submitted"]
-
-# Uncomment for test data
-submitIds = [10551997, 7867166, 12041458, 12059888]
 DEBUG = True
 
-def isComment(data):
+def __is_comment(data):
   return data is not None \
     and "type" in data \
     and data["type"] == "comment" \
-    and "text" in data
+    and "by" in data \
+    and "text" in data \
+    and "time" in data
 
-def isPossibleBan(data):
-  return isComment(data) \
+def __is_possible_ban(data):
+  return __is_comment(data) \
     and "banned" in data["text"] \
     and "parent" in data
 
-def isUserBanned(parentComment, modComment):
-  return True
+def __isUserBanned(user_comment, mod_comment):
+  if __is_comment(user_comment) is False:
+    return False
+  return user_comment["time"] - mod_comment["time"] < _LAST_SUBMITTED_THRESHOLD_SECONDS
 
-def processItem(id):
+def __process_item(id):
   if DEBUG:
     print(id)
 
-  modComment = ""
+  mod_comment = ""
   try:
-    modComment = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/item/"
+    mod_comment = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/item/"
       + str(id)
       + ".json",
       context=_CONTEXT)))
@@ -57,27 +57,36 @@ def processItem(id):
     print("***********************************************")
     return 0
 
-  if isPossibleBan(modComment):
+  if __is_possible_ban(mod_comment):
     parentComment = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/item/"
-      + str(modComment["parent"])
+      + str(mod_comment["parent"])
       + ".json",
       context=_CONTEXT)))
 
-    if isUserBanned(parentComment, modComment):
+    if __isUserBanned(parentComment, mod_comment):
       _LOCK.acquire()
       with open("README.md", 'a') as out:
-        out.write(parentComment["text"] + '\n\n')
+        out.write(parentComment["text"] + "\n")
+        out.write("  --" + parentComment["by"] + "\n\n")
       _LOCK.release()
     return 1
   return 0
 
 def run_job():
+  mod_data = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/user/dang.json", context=_CONTEXT)))
+  submit_ids = mod_data["submitted"]
+
+  # Uncomment for test data
+  submit_ids = [10551997, 7867166, 12041458, 12059888]
+
   pool = Pool(8)
-  results = pool.map(processItem, submitIds)
+  results = pool.map(__process_item, submit_ids)
 
   pool.close()
   pool.join()
 
   print("Finished")
   print("Total banned users detected: " + str(sum(results)))
+
+run_job()
 
