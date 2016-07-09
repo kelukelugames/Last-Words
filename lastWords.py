@@ -66,8 +66,8 @@ def __process_item(id):
     if __isUserBanned(parentComment, mod_comment):
       _LOCK.acquire()
       with open("README.md", 'a') as out:
-        out.write(parentComment["text"] + "\n")
-        out.write("  --" + parentComment["by"] + "\n\n")
+        out.write("*\"" + parentComment["text"] + "\n" + "\"*" )
+        out.write("  [--" + parentComment["by"] + "](https://news.ycombinator.com/user?id=" + parentComment["by"] + ")\n\n")
       _LOCK.release()
     return 1
   return 0
