@@ -19,9 +19,24 @@ _DECODER = codecs.getreader("utf-8")
 # To prevent SSL failure after too many calls.
 _CONTEXT = ssl._create_unverified_context()
 _LOCK = threading.Lock()
-_LAST_SUBMITTED_THRESHOLD_SECONDS = 1000
+# 3 days
+_BAN_THRESHOLD_SECONDS = 60 * 60 * 24 * 3
 
 DEBUG = True
+
+
+
+def __get_user(id):
+  return json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/user/"
+      + id
+      + ".json", 
+      context=_CONTEXT)))
+
+def __get_comment(id):
+  return json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/item/"
+      + str(id)
+      + ".json",
+      context=_CONTEXT)))
 
 def __is_comment(data):
   return data is not None \
@@ -36,14 +51,21 @@ def __is_possible_ban(data):
     and "banned" in data["text"] \
     and "parent" in data
 
-def __isUserBanned(user_comment, mod_comment):
+def __is_user_banned(user_comment, mod_comment):
   if __is_comment(user_comment) is False:
-    return False
-  return user_comment["time"] - mod_comment["time"] < _LAST_SUBMITTED_THRESHOLD_SECONDS
+    return False  
+
+  user_data = __get_user(user_comment["by"])
+  recent_comment = __get_comment(user_data["submitted"][0])
+
+  # if mod comments and then bans then user, we might miss a few banned users due to race condition.
+  if DEBUG:
+    print(mod_comment["time"] - recent_comment["time"])
+  return mod_comment["time"] > recent_comment["time"] - _BAN_THRESHOLD_SECONDS
 
 def __process_item(id):
   if DEBUG:
-    print(id)
+    print("Processing: " + str(id))
 
   mod_comment = ""
   try:
@@ -58,28 +80,25 @@ def __process_item(id):
     return 0
 
   if __is_possible_ban(mod_comment):
-    parentComment = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/item/"
-      + str(mod_comment["parent"])
-      + ".json",
-      context=_CONTEXT)))
+    parent_comment = __get_comment(mod_comment["parent"])
 
-    if __isUserBanned(parentComment, mod_comment):
+    if __is_user_banned(parent_comment, mod_comment):
       _LOCK.acquire()
       with open("README.md", 'a') as out:
-        out.write("*\"" + parentComment["text"] + "\n" + "\"*" )
-        out.write("  [--" + parentComment["by"] + "](https://news.ycombinator.com/user?id=" + parentComment["by"] + ")\n\n")
+        out.write("*\"" + parent_comment["text"] + "\n" + "\"*" )
+        out.write("  [--" + parent_comment["by"] + "](https://news.ycombinator.com/user?id=" + parent_comment["by"] + ")\n\n\n")
       _LOCK.release()
     return 1
   return 0
 
 def run_job():
-  mod_data = json.load(_DECODER(urlopen("https://hacker-news.firebaseio.com/v0/user/dang.json", context=_CONTEXT)))
+  mod_data = __get_user("dang")
   submit_ids = mod_data["submitted"]
 
   # Uncomment for test data
   submit_ids = [10551997, 7867166, 12041458, 12059888]
 
-  pool = Pool(8)
+  pool = Pool(1)
   results = pool.map(__process_item, submit_ids)
 
   pool.close()
