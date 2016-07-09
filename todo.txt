@@ -1,0 +1,13 @@
+1) read all comments from user
+2) go through each comment
+3) how to parse the comments?
+4) thread the http calls
+5) rename to epitephs or graveyeard.
+6) add comments
+
+criteria for dead?
+
+mod's comment has to have word banned
+parent comment is dead.
+
+then print user info.
