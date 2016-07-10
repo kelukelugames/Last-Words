@@ -21,8 +21,8 @@ _CONTEXT = ssl._create_unverified_context()
 _LOCK = threading.Lock()
 # _BAN_THRESHOLD_SECONDS = 3 days
 # Bigger values increases false positives. 
-# Examples: Recently unbanned users or https://news.ycombinator.com/item?id=12051001
-# Smaller value misses the case for 10551997
+# Examples: Recently unbanned users or https://hacker-news.firebaseio.com/v0/item/12053367.json
+# Smaller value misses the case for https://hacker-news.firebaseio.com/v0/item/10551997.json
 _BAN_THRESHOLD_SECONDS = 60 * 60 * 24 * 3
 _MOD_NAME = "dang"
   # Increasing the number of threads beyond 8 on my machine causes Http errors.
