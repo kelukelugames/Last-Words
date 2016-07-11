@@ -117,7 +117,7 @@ def __process_item(id):
 
     if __is_user_banned(parent_comment, mod_comment):
       __write_to_file(parent_comment)
-    return 1
+      return 1
 
   return 0
 
